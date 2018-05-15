@@ -1,0 +1,2731 @@
+diff -r 9e65f782e8a1 Makefile.am
+--- a/Makefile.am	Tue Feb 13 17:16:01 2018 +0100
++++ b/Makefile.am	Tue May 15 10:08:44 2018 -0600
+@@ -65,7 +65,8 @@
+ 	tty
+ 
+ noinst_HEADERS = \
+-	globals.h
++	globals.h \
++	include/ecrt.h
+ 
+ EXTRA_DIST = \
+ 	Doxyfile.in \
+diff -r 9e65f782e8a1 devices/Makefile.am
+--- a/devices/Makefile.am	Tue Feb 13 17:16:01 2018 +0100
++++ b/devices/Makefile.am	Tue May 15 10:08:44 2018 -0600
+@@ -40,7 +40,7 @@
+ 	igb
+ 
+ # using HEADERS to enable tags target
+-noinst_HEADERS = \
++include_HEADERS = \
+ 	8139too-2.6.13-ethercat.c \
+ 	8139too-2.6.13-orig.c \
+ 	8139too-2.6.17-ethercat.c \
+diff -r 9e65f782e8a1 devices/ccat/gpio.c
+--- a/devices/ccat/gpio.c	Tue Feb 13 17:16:01 2018 +0100
++++ b/devices/ccat/gpio.c	Tue May 15 10:08:44 2018 -0600
+@@ -18,11 +18,12 @@
+     51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ */
+ 
++#include "module.h"
++
+ #include <linux/kernel.h>
+ #include <linux/module.h>
+ #include <linux/gpio.h>
+ #include <linux/version.h>
+-#include "module.h"
+ 
+ /**
+  * struct ccat_gpio - CCAT GPIO function
+diff -r 9e65f782e8a1 devices/ccat/module.c
+--- a/devices/ccat/module.c	Tue Feb 13 17:16:01 2018 +0100
++++ b/devices/ccat/module.c	Tue May 15 10:08:44 2018 -0600
+@@ -18,12 +18,13 @@
+     51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ */
+ 
++#include "module.h"
++
+ #include <linux/etherdevice.h>
+ #include <linux/module.h>
+ #include <linux/netdevice.h>
+ #include <linux/platform_device.h>
+ #include <linux/version.h>
+-#include "module.h"
+ 
+ MODULE_DESCRIPTION(DRV_DESCRIPTION);
+ MODULE_AUTHOR("Patrick Bruenn <p.bruenn@beckhoff.com>");
+diff -r 9e65f782e8a1 devices/ccat/netdev.c
+--- a/devices/ccat/netdev.c	Tue Feb 13 17:16:01 2018 +0100
++++ b/devices/ccat/netdev.c	Tue May 15 10:08:44 2018 -0600
+@@ -18,6 +18,8 @@
+     51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ */
+ 
++#include "module.h"
++
+ #include <linux/etherdevice.h>
+ #include <linux/kernel.h>
+ #include <linux/module.h>
+@@ -31,8 +33,6 @@
+ #define request_dma(X, Y) ((int)(-EINVAL))
+ #endif
+ 
+-#include "module.h"
+-
+ /**
+  * EtherCAT frame to enable forwarding on EtherCAT Terminals
+  */
+diff -r 9e65f782e8a1 devices/generic.c
+--- a/devices/generic.c	Tue Feb 13 17:16:01 2018 +0100
++++ b/devices/generic.c	Tue May 15 10:08:44 2018 -0600
+@@ -33,6 +33,9 @@
+ 
+ /*****************************************************************************/
+ 
++#include "ecdev.h"
++#include "../globals.h"
++
+ #include <linux/module.h>
+ #include <linux/device.h>
+ #include <linux/err.h>
+@@ -40,9 +43,6 @@
+ #include <linux/if_arp.h> /* ARPHRD_ETHER */
+ #include <linux/etherdevice.h>
+ 
+-#include "../globals.h"
+-#include "ecdev.h"
+-
+ #define PFX "ec_generic: "
+ 
+ #define ETH_P_ETHERCAT 0x88A4
+diff -r 9e65f782e8a1 examples/dc_rtai/dc_rtai_sample.c
+--- a/examples/dc_rtai/dc_rtai_sample.c	Tue Feb 13 17:16:01 2018 +0100
++++ b/examples/dc_rtai/dc_rtai_sample.c	Tue May 15 10:08:44 2018 -0600
+@@ -29,16 +29,16 @@
+  *
+  *****************************************************************************/
+ 
+-// Linux
+-#include <linux/module.h>
+-#include <linux/err.h>
++// EtherCAT
++#include "../../include/ecrt.h"
+ 
+ // RTAI
+ #include <rtai_sched.h>
+ #include <rtai_sem.h>
+ 
+-// EtherCAT
+-#include "../../include/ecrt.h"
++// Linux
++#include <linux/module.h>
++#include <linux/err.h>
+ 
+ /*****************************************************************************/
+ 
+@@ -302,8 +302,7 @@
+     }
+ 
+     for (i = 0; i < NUM_DIG_OUT; i++) {
+-        if (!(sc = ecrt_master_slave_config(master,
+-                        DigOutSlavePos(i), Beckhoff_EL2008))) {
++        if (!(sc = ecrt_master_slave_config(master, DigOutSlavePos(i), Beckhoff_EL2008))) {
+             printk(KERN_ERR PFX "Failed to get slave configuration.\n");
+             goto out_release_master;
+         }
+@@ -320,8 +319,7 @@
+             goto out_release_master;
+     }
+ 
+-    if (!(sc = ecrt_master_slave_config(master,
+-                    CounterSlavePos, IDS_Counter))) {
++    if (!(sc = ecrt_master_slave_config(master, CounterSlavePos, IDS_Counter))) {
+         printk(KERN_ERR PFX "Failed to get slave configuration.\n");
+         goto out_release_master;
+     }
+diff -r 9e65f782e8a1 examples/dc_user/main.c
+--- a/examples/dc_user/main.c	Tue Feb 13 17:16:01 2018 +0100
++++ b/examples/dc_user/main.c	Tue May 15 10:08:44 2018 -0600
+@@ -27,6 +27,10 @@
+  *
+  ****************************************************************************/
+ 
++#include "ecrt.h"
++
++/****************************************************************************/
++
+ #include <errno.h>
+ #include <signal.h>
+ #include <stdio.h>
+@@ -42,10 +46,6 @@
+ 
+ /****************************************************************************/
+ 
+-#include "ecrt.h"
+-
+-/****************************************************************************/
+-
+ // Application parameters
+ #define FREQUENCY 1000
+ #define CLOCK_TO_USE CLOCK_MONOTONIC
+@@ -276,19 +276,18 @@
+     if (!sc)
+         return -1;
+ 
+-    if (!(sc = ecrt_master_slave_config(master,
+-                    DigOutSlavePos, Beckhoff_EL2008))) {
++    if (!(sc = ecrt_master_slave_config(master, DigOutSlavePos, Beckhoff_EL2008))) {
+         fprintf(stderr, "Failed to get slave configuration.\n");
+         return -1;
+     }
+ 
+     off_dig_out = ecrt_slave_config_reg_pdo_entry(sc,
+             0x7000, 1, domain1, NULL);
+-    if (off_dig_out < 0)
++    if (off_dig_out < 0) {
+         return -1;
++    }
+ 
+-	if (!(sc = ecrt_master_slave_config(master,
+-					CounterSlavePos, IDS_Counter))) {
++	if (!(sc = ecrt_master_slave_config(master, CounterSlavePos, IDS_Counter))) {
+         fprintf(stderr, "Failed to get slave configuration.\n");
+         return -1;
+ 	}
+diff -r 9e65f782e8a1 examples/mini/mini.c
+--- a/examples/mini/mini.c	Tue Feb 13 17:16:01 2018 +0100
++++ b/examples/mini/mini.c	Tue May 15 10:08:44 2018 -0600
+@@ -27,6 +27,8 @@
+  *
+  *****************************************************************************/
+ 
++#include "../../include/ecrt.h" // EtherCAT realtime interface
++
+ #include <linux/version.h>
+ #include <linux/module.h>
+ #include <linux/timer.h>
+@@ -43,8 +45,6 @@
+ #include <asm/semaphore.h>
+ #endif
+ 
+-#include "../../include/ecrt.h" // EtherCAT realtime interface
+-
+ /*****************************************************************************/
+ 
+ // Module parameters
+diff -r 9e65f782e8a1 examples/rtai/rtai_sample.c
+--- a/examples/rtai/rtai_sample.c	Tue Feb 13 17:16:01 2018 +0100
++++ b/examples/rtai/rtai_sample.c	Tue May 15 10:08:44 2018 -0600
+@@ -29,16 +29,16 @@
+  *
+  *****************************************************************************/
+ 
+-// Linux
+-#include <linux/module.h>
+-#include <linux/err.h>
++// EtherCAT
++#include "../../include/ecrt.h"
+ 
+ // RTAI
+ #include <rtai_sched.h>
+ #include <rtai_sem.h>
+ 
+-// EtherCAT
+-#include "../../include/ecrt.h"
++// Linux
++#include <linux/module.h>
++#include <linux/err.h>
+ 
+ /*****************************************************************************/
+ 
+diff -r 9e65f782e8a1 examples/rtai_rtdm/main.c
+--- a/examples/rtai_rtdm/main.c	Tue Feb 13 17:16:01 2018 +0100
++++ b/examples/rtai_rtdm/main.c	Tue May 15 10:08:44 2018 -0600
+@@ -27,17 +27,17 @@
+  *
+  *****************************************************************************/
+ 
++#include "ecrt.h"
++
++#include <rtai_lxrt.h>
++#include <rtdm/rtdm.h>
++
+ #include <sched.h>
+ #include <stdio.h>
+ #include <stdlib.h>
+ #include <fcntl.h>
+ #include <signal.h>
+ 
+-#include <rtai_lxrt.h>
+-#include <rtdm/rtdm.h>
+-
+-#include "ecrt.h"
+-
+ #define rt_printf(X, Y)
+ 
+ #define NSEC_PER_SEC 1000000000
+diff -r 9e65f782e8a1 examples/rtai_rtdm_dc/main.c
+--- a/examples/rtai_rtdm_dc/main.c	Tue Feb 13 17:16:01 2018 +0100
++++ b/examples/rtai_rtdm_dc/main.c	Tue May 15 10:08:44 2018 -0600
+@@ -27,6 +27,8 @@
+  *
+  *****************************************************************************/
+ 
++#include "ecrt.h"
++
+ #include <sched.h>
+ #include <stdio.h>
+ #include <stdlib.h>
+@@ -36,8 +38,6 @@
+ #include <rtai_lxrt.h>
+ #include <rtdm/rtdm.h>
+ 
+-#include "ecrt.h"
+-
+ #define rt_printf(X, Y)
+ 
+ #define NSEC_PER_SEC 1000000000
+diff -r 9e65f782e8a1 examples/tty/serial.c
+--- a/examples/tty/serial.c	Tue Feb 13 17:16:01 2018 +0100
++++ b/examples/tty/serial.c	Tue May 15 10:08:44 2018 -0600
+@@ -27,14 +27,15 @@
+  *
+  *****************************************************************************/
+ 
++#include "serial.h"
++#include "../../include/ecrt.h" // EtherCAT realtime interface
++#include "../../include/ectty.h" // EtherCAT TTY interface
++
+ #include <linux/module.h>
+ #include <linux/err.h>
+ #include <linux/termios.h>
+ #include <linux/slab.h>
+ 
+-#include "../../include/ecrt.h" // EtherCAT realtime interface
+-#include "../../include/ectty.h" // EtherCAT TTY interface
+-
+ /*****************************************************************************/
+ 
+ // Optional features
+diff -r 9e65f782e8a1 examples/tty/tty.c
+--- a/examples/tty/tty.c	Tue Feb 13 17:16:01 2018 +0100
++++ b/examples/tty/tty.c	Tue May 15 10:08:44 2018 -0600
+@@ -27,6 +27,10 @@
+  *
+  *****************************************************************************/
+ 
++#include "../../include/ecrt.h" // EtherCAT realtime interface
++
++#include "serial.h"
++
+ #include <linux/version.h>
+ #include <linux/module.h>
+ #include <linux/timer.h>
+@@ -39,10 +43,6 @@
+ #include <asm/semaphore.h>
+ #endif
+ 
+-#include "../../include/ecrt.h" // EtherCAT realtime interface
+-
+-#include "serial.h"
+-
+ /*****************************************************************************/
+ 
+ // Module parameters
+diff -r 9e65f782e8a1 examples/user/main.c
+--- a/examples/user/main.c	Tue Feb 13 17:16:01 2018 +0100
++++ b/examples/user/main.c	Tue May 15 10:08:44 2018 -0600
+@@ -27,6 +27,8 @@
+  *
+  ****************************************************************************/
+ 
++#include "ecrt.h"
++
+ #include <errno.h>
+ #include <signal.h>
+ #include <stdio.h>
+@@ -41,8 +43,6 @@
+ 
+ /****************************************************************************/
+ 
+-#include "ecrt.h"
+-
+ /****************************************************************************/
+ 
+ /** Task period in ns. */
+diff -r 9e65f782e8a1 examples/xenomai/main.c
+--- a/examples/xenomai/main.c	Tue Feb 13 17:16:01 2018 +0100
++++ b/examples/xenomai/main.c	Tue May 15 10:08:44 2018 -0600
+@@ -28,6 +28,8 @@
+  *
+  *****************************************************************************/
+ 
++#include "ecrt.h"
++
+ #include <errno.h>
+ #include <signal.h>
+ #include <stdio.h>
+@@ -45,8 +47,6 @@
+ #include <rtdk.h>
+ #include <pthread.h>
+ 
+-#include "ecrt.h"
+-
+ RT_TASK my_task;
+ 
+ static int run = 1;
+diff -r 9e65f782e8a1 examples/xenomai_posix/main.c
+--- a/examples/xenomai_posix/main.c	Tue Feb 13 17:16:01 2018 +0100
++++ b/examples/xenomai_posix/main.c	Tue May 15 10:08:44 2018 -0600
+@@ -27,6 +27,8 @@
+  *
+  *****************************************************************************/
+ 
++#include "ecrt.h"
++
+ #include <errno.h>
+ #include <mqueue.h>
+ #include <signal.h>
+@@ -43,8 +45,6 @@
+ #include <rtdm/rtdm.h>
+ #include <rtdk.h>
+ 
+-#include "ecrt.h"
+-
+ #define NSEC_PER_SEC 1000000000
+ 
+ static unsigned int cycle_us = 1000; /* 1 ms */
+diff -r 9e65f782e8a1 lib/common.c
+--- a/lib/common.c	Tue Feb 13 17:16:01 2018 +0100
++++ b/lib/common.c	Tue May 15 10:08:44 2018 -0600
+@@ -28,6 +28,9 @@
+  *
+  *****************************************************************************/
+ 
++#include "ioctl.h"
++#include "master.h"
++
+ #include <sys/types.h>
+ #include <sys/stat.h>
+ #include <fcntl.h>
+@@ -38,9 +41,6 @@
+ #include <unistd.h>
+ #include <sys/socket.h>
+ 
+-#include "ioctl.h"
+-#include "master.h"
+-
+ /*****************************************************************************/
+ 
+ unsigned int ecrt_version_magic(void)
+diff -r 9e65f782e8a1 lib/domain.c
+--- a/lib/domain.c	Tue Feb 13 17:16:01 2018 +0100
++++ b/lib/domain.c	Tue May 15 10:08:44 2018 -0600
+@@ -35,14 +35,14 @@
+ 
+ /*****************************************************************************/
+ 
++#include "domain.h"
++#include "ioctl.h"
++#include "master.h"
++
+ #include <stdio.h>
+ #include <string.h>
+ #include <errno.h> /* ENOENT */
+ 
+-#include "ioctl.h"
+-#include "domain.h"
+-#include "master.h"
+-
+ /*****************************************************************************/
+ 
+ void ec_domain_clear(ec_domain_t *domain)
+diff -r 9e65f782e8a1 lib/ioctl.h
+--- a/lib/ioctl.h	Tue Feb 13 17:16:01 2018 +0100
++++ b/lib/ioctl.h	Tue May 15 10:08:44 2018 -0600
+@@ -33,6 +33,10 @@
+ 
+ /*****************************************************************************/
+ 
++#include "master/ioctl.h"
++
++/*****************************************************************************/
++
+ #ifdef USE_RTDM
+ #include <rtdm/rtdm.h>
+ #else
+@@ -41,10 +45,6 @@
+ 
+ /*****************************************************************************/
+ 
+-#include "master/ioctl.h"
+-
+-/*****************************************************************************/
+-
+ #ifdef USE_RTDM
+ 
+ #define ioctl rt_dev_ioctl
+@@ -70,4 +70,3 @@
+ #endif /* __EC_LIB_IOCTL_H__ */
+ 
+ /*****************************************************************************/
+-
+diff -r 9e65f782e8a1 lib/master.c
+--- a/lib/master.c	Tue Feb 13 17:16:01 2018 +0100
++++ b/lib/master.c	Tue May 15 10:08:44 2018 -0600
+@@ -28,6 +28,11 @@
+  *
+  ****************************************************************************/
+ 
++#include "master.h"
++#include "ioctl.h"
++#include "domain.h"
++#include "slave_config.h"
++
+ #include <unistd.h> /* close() */
+ #include <stdlib.h>
+ #include <stdio.h>
+@@ -35,11 +40,6 @@
+ #include <string.h>
+ #include <sys/mman.h>
+ 
+-#include "ioctl.h"
+-#include "master.h"
+-#include "domain.h"
+-#include "slave_config.h"
+-
+ /****************************************************************************/
+ 
+ int ecrt_master_reserve(ec_master_t *master)
+diff -r 9e65f782e8a1 lib/reg_request.c
+--- a/lib/reg_request.c	Tue Feb 13 17:16:01 2018 +0100
++++ b/lib/reg_request.c	Tue May 15 10:08:44 2018 -0600
+@@ -34,14 +34,14 @@
+ 
+ /*****************************************************************************/
+ 
++#include "reg_request.h"
++#include "ioctl.h"
++#include "slave_config.h"
++#include "master.h"
++
+ #include <stdio.h>
+ #include <string.h>
+ 
+-#include "ioctl.h"
+-#include "reg_request.h"
+-#include "slave_config.h"
+-#include "master.h"
+-
+ /*****************************************************************************/
+ 
+ void ec_reg_request_clear(ec_reg_request_t *reg)
+diff -r 9e65f782e8a1 lib/sdo_request.c
+--- a/lib/sdo_request.c	Tue Feb 13 17:16:01 2018 +0100
++++ b/lib/sdo_request.c	Tue May 15 10:08:44 2018 -0600
+@@ -34,14 +34,14 @@
+ 
+ /*****************************************************************************/
+ 
++#include "sdo_request.h"
++#include "ioctl.h"
++#include "slave_config.h"
++#include "master.h"
++
+ #include <stdio.h>
+ #include <string.h>
+ 
+-#include "ioctl.h"
+-#include "sdo_request.h"
+-#include "slave_config.h"
+-#include "master.h"
+-
+ /*****************************************************************************/
+ 
+ void ec_sdo_request_clear(ec_sdo_request_t *req)
+diff -r 9e65f782e8a1 lib/slave_config.c
+--- a/lib/slave_config.c	Tue Feb 13 17:16:01 2018 +0100
++++ b/lib/slave_config.c	Tue May 15 10:08:44 2018 -0600
+@@ -28,19 +28,19 @@
+  *
+  *****************************************************************************/
+ 
+-#include <stdlib.h>
+-#include <stdio.h>
+-#include <string.h>
+-#include <errno.h> /* ENOENT */
+-
++#include "slave_config.h"
+ #include "ioctl.h"
+-#include "slave_config.h"
+ #include "domain.h"
+ #include "sdo_request.h"
+ #include "reg_request.h"
+ #include "voe_handler.h"
+ #include "master.h"
+ 
++#include <stdlib.h>
++#include <stdio.h>
++#include <string.h>
++#include <errno.h> /* ENOENT */
++
+ /*****************************************************************************/
+ 
+ void ec_slave_config_clear(ec_slave_config_t *sc)
+diff -r 9e65f782e8a1 lib/voe_handler.c
+--- a/lib/voe_handler.c	Tue Feb 13 17:16:01 2018 +0100
++++ b/lib/voe_handler.c	Tue May 15 10:08:44 2018 -0600
+@@ -34,15 +34,15 @@
+ 
+ /*****************************************************************************/
+ 
++#include "voe_handler.h"
++#include "ioctl.h"
++#include "slave_config.h"
++#include "master.h"
++
+ #include <stdlib.h>
+ #include <stdio.h>
+ #include <string.h>
+ 
+-#include "ioctl.h"
+-#include "voe_handler.h"
+-#include "slave_config.h"
+-#include "master.h"
+-
+ /*****************************************************************************/
+ 
+ void ec_voe_handler_clear(ec_voe_handler_t *voe)
+diff -r 9e65f782e8a1 master/cdev.c
+--- a/master/cdev.c	Tue Feb 13 17:16:01 2018 +0100
++++ b/master/cdev.c	Tue May 15 10:08:44 2018 -0600
+@@ -34,10 +34,6 @@
+ 
+ /*****************************************************************************/
+ 
+-#include <linux/module.h>
+-#include <linux/vmalloc.h>
+-#include <linux/mm.h>
+-
+ #include "cdev.h"
+ #include "master.h"
+ #include "slave_config.h"
+@@ -45,6 +41,10 @@
+ #include "ethernet.h"
+ #include "ioctl.h"
+ 
++#include <linux/module.h>
++#include <linux/vmalloc.h>
++#include <linux/mm.h>
++
+ /** Set to 1 to enable device operations debugging.
+  */
+ #define DEBUG 0
+diff -r 9e65f782e8a1 master/cdev.h
+--- a/master/cdev.h	Tue Feb 13 17:16:01 2018 +0100
++++ b/master/cdev.h	Tue May 15 10:08:44 2018 -0600
+@@ -37,11 +37,11 @@
+ #ifndef __EC_CDEV_H__
+ #define __EC_CDEV_H__
+ 
++#include "globals.h"
++
+ #include <linux/fs.h>
+ #include <linux/cdev.h>
+ 
+-#include "globals.h"
+-
+ /*****************************************************************************/
+ 
+ /** EtherCAT master character device.
+diff -r 9e65f782e8a1 master/coe_emerg_ring.c
+--- a/master/coe_emerg_ring.c	Tue Feb 13 17:16:01 2018 +0100
++++ b/master/coe_emerg_ring.c	Tue May 15 10:08:44 2018 -0600
+@@ -35,10 +35,10 @@
+ 
+ /*****************************************************************************/
+ 
++#include "coe_emerg_ring.h"
++
+ #include <linux/slab.h>
+ 
+-#include "coe_emerg_ring.h"
+-
+ /*****************************************************************************/
+ 
+ /** Emergency ring buffer constructor.
+diff -r 9e65f782e8a1 master/datagram.c
+--- a/master/datagram.c	Tue Feb 13 17:16:01 2018 +0100
++++ b/master/datagram.c	Tue May 15 10:08:44 2018 -0600
+@@ -34,11 +34,11 @@
+ 
+ /*****************************************************************************/
+ 
+-#include <linux/slab.h>
+-
+ #include "datagram.h"
+ #include "master.h"
+ 
++#include <linux/slab.h>
++
+ /*****************************************************************************/
+ 
+ /** \cond */
+diff -r 9e65f782e8a1 master/datagram.h
+--- a/master/datagram.h	Tue Feb 13 17:16:01 2018 +0100
++++ b/master/datagram.h	Tue May 15 10:08:44 2018 -0600
+@@ -37,12 +37,12 @@
+ #ifndef __EC_DATAGRAM_H__
+ #define __EC_DATAGRAM_H__
+ 
++#include "globals.h"
++
+ #include <linux/list.h>
+ #include <linux/time.h>
+ #include <linux/timex.h>
+ 
+-#include "globals.h"
+-
+ /*****************************************************************************/
+ 
+ /** EtherCAT datagram type.
+diff -r 9e65f782e8a1 master/datagram_pair.c
+--- a/master/datagram_pair.c	Tue Feb 13 17:16:01 2018 +0100
++++ b/master/datagram_pair.c	Tue May 15 10:08:44 2018 -0600
+@@ -34,10 +34,10 @@
+ 
+ /*****************************************************************************/
+ 
+-#include <linux/slab.h>
++#include "datagram_pair.h"
++#include "master.h"
+ 
+-#include "master.h"
+-#include "datagram_pair.h"
++#include <linux/slab.h>
+ 
+ /*****************************************************************************/
+ 
+diff -r 9e65f782e8a1 master/datagram_pair.h
+--- a/master/datagram_pair.h	Tue Feb 13 17:16:01 2018 +0100
++++ b/master/datagram_pair.h	Tue May 15 10:08:44 2018 -0600
+@@ -37,11 +37,11 @@
+ #ifndef __EC_DATAGRAM_PAIR_H__
+ #define __EC_DATAGRAM_PAIR_H__
+ 
+-#include <linux/list.h>
+-
+ #include "globals.h"
+ #include "datagram.h"
+ 
++#include <linux/list.h>
++
+ /*****************************************************************************/
+ 
+ /** Domain datagram pair.
+diff -r 9e65f782e8a1 master/debug.c
+--- a/master/debug.c	Tue Feb 13 17:16:01 2018 +0100
++++ b/master/debug.c	Tue May 15 10:08:44 2018 -0600
+@@ -34,14 +34,14 @@
+ 
+ /*****************************************************************************/
+ 
++#include "debug.h"
++#include "globals.h"
++#include "master.h"
++
+ #include <linux/version.h>
+ #include <linux/netdevice.h>
+ #include <linux/etherdevice.h>
+ 
+-#include "globals.h"
+-#include "master.h"
+-#include "debug.h"
+-
+ /*****************************************************************************/
+ 
+ // net_device functions
+diff -r 9e65f782e8a1 master/device.c
+--- a/master/device.c	Tue Feb 13 17:16:01 2018 +0100
++++ b/master/device.c	Tue May 15 10:08:44 2018 -0600
+@@ -34,14 +34,14 @@
+ 
+ /*****************************************************************************/
+ 
++#include "device.h"
++#include "master.h"
++
+ #include <linux/module.h>
+ #include <linux/skbuff.h>
+ #include <linux/if_ether.h>
+ #include <linux/netdevice.h>
+ 
+-#include "device.h"
+-#include "master.h"
+-
+ #ifdef EC_DEBUG_RING
+ #define timersub(a, b, result) \
+     do { \
+diff -r 9e65f782e8a1 master/device.h
+--- a/master/device.h	Tue Feb 13 17:16:01 2018 +0100
++++ b/master/device.h	Tue May 15 10:08:44 2018 -0600
+@@ -37,11 +37,11 @@
+ #ifndef __EC_DEVICE_H__
+ #define __EC_DEVICE_H__
+ 
+-#include <linux/interrupt.h>
+-
+ #include "../devices/ecdev.h"
+ #include "globals.h"
+ 
++#include <linux/interrupt.h>
++
+ /**
+  * Size of the transmit ring.
+  * This memory ring is used to transmit frames. It is necessary to use
+diff -r 9e65f782e8a1 master/domain.c
+--- a/master/domain.c	Tue Feb 13 17:16:01 2018 +0100
++++ b/master/domain.c	Tue May 15 10:08:44 2018 -0600
+@@ -34,14 +34,13 @@
+ 
+ /*****************************************************************************/
+ 
+-#include <linux/module.h>
+-
++#include "domain.h"
+ #include "globals.h"
+ #include "master.h"
+ #include "slave_config.h"
++#include "datagram_pair.h"
+ 
+-#include "domain.h"
+-#include "datagram_pair.h"
++#include <linux/module.h>
+ 
+ /** Extra debug output for redundancy functions.
+  */
+diff -r 9e65f782e8a1 master/domain.h
+--- a/master/domain.h	Tue Feb 13 17:16:01 2018 +0100
++++ b/master/domain.h	Tue May 15 10:08:44 2018 -0600
+@@ -37,13 +37,13 @@
+ #ifndef __EC_DOMAIN_H__
+ #define __EC_DOMAIN_H__
+ 
+-#include <linux/list.h>
+-
+ #include "globals.h"
+ #include "datagram.h"
+ #include "master.h"
+ #include "fmmu_config.h"
+ 
++#include <linux/list.h>
++
+ /*****************************************************************************/
+ 
+ /** EtherCAT domain.
+diff -r 9e65f782e8a1 master/ethernet.c
+--- a/master/ethernet.c	Tue Feb 13 17:16:01 2018 +0100
++++ b/master/ethernet.c	Tue May 15 10:08:44 2018 -0600
+@@ -34,15 +34,15 @@
+ 
+ /*****************************************************************************/
+ 
+-#include <linux/version.h>
+-#include <linux/netdevice.h>
+-#include <linux/etherdevice.h>
+-
++#include "ethernet.h"
+ #include "globals.h"
+ #include "master.h"
+ #include "slave.h"
+ #include "mailbox.h"
+-#include "ethernet.h"
++
++#include <linux/version.h>
++#include <linux/netdevice.h>
++#include <linux/etherdevice.h>
+ 
+ /*****************************************************************************/
+ 
+diff -r 9e65f782e8a1 master/ethernet.h
+--- a/master/ethernet.h	Tue Feb 13 17:16:01 2018 +0100
++++ b/master/ethernet.h	Tue May 15 10:08:44 2018 -0600
+@@ -37,8 +37,13 @@
+ #ifndef __EC_ETHERNET_H__
+ #define __EC_ETHERNET_H__
+ 
++#include "slave.h"
++#include "datagram.h"
++#include "globals.h"
++
+ #include <linux/list.h>
+ #include <linux/netdevice.h>
++#include <linux/version.h>
+ 
+ #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27)
+ #include <linux/semaphore.h>
+@@ -46,10 +51,6 @@
+ #include <asm/semaphore.h>
+ #endif
+ 
+-#include "globals.h"
+-#include "slave.h"
+-#include "datagram.h"
+-
+ /*****************************************************************************/
+ 
+ /**
+diff -r 9e65f782e8a1 master/fmmu_config.c
+--- a/master/fmmu_config.c	Tue Feb 13 17:16:01 2018 +0100
++++ b/master/fmmu_config.c	Tue May 15 10:08:44 2018 -0600
+@@ -33,11 +33,11 @@
+ 
+ /*****************************************************************************/
+ 
++#include "fmmu_config.h"
+ #include "globals.h"
+ #include "slave_config.h"
+ #include "master.h"
+ 
+-#include "fmmu_config.h"
+ 
+ /*****************************************************************************/
+ 
+diff -r 9e65f782e8a1 master/foe_request.c
+--- a/master/foe_request.c	Tue Feb 13 17:16:01 2018 +0100
++++ b/master/foe_request.c	Tue May 15 10:08:44 2018 -0600
+@@ -33,13 +33,13 @@
+ 
+ /*****************************************************************************/
+ 
++#include "foe_request.h"
++#include "foe.h"
++
+ #include <linux/module.h>
+ #include <linux/jiffies.h>
+ #include <linux/slab.h>
+ 
+-#include "foe_request.h"
+-#include "foe.h"
+-
+ /*****************************************************************************/
+ 
+ /** Default timeout in ms to wait for FoE transfer responses.
+diff -r 9e65f782e8a1 master/foe_request.h
+--- a/master/foe_request.h	Tue Feb 13 17:16:01 2018 +0100
++++ b/master/foe_request.h	Tue May 15 10:08:44 2018 -0600
+@@ -37,12 +37,12 @@
+ #ifndef __EC_FOE_REQUEST_H__
+ #define __EC_FOE_REQUEST_H__
+ 
+-#include <linux/list.h>
+-
+ #include "../include/ecrt.h"
+ 
+ #include "globals.h"
+ 
++#include <linux/list.h>
++
+ /*****************************************************************************/
+ 
+ /** FoE request.
+diff -r 9e65f782e8a1 master/fsm_change.c
+--- a/master/fsm_change.c	Tue Feb 13 17:16:01 2018 +0100
++++ b/master/fsm_change.c	Tue May 15 10:08:44 2018 -0600
+@@ -34,9 +34,9 @@
+ 
+ /*****************************************************************************/
+ 
++#include "fsm_change.h"
+ #include "globals.h"
+ #include "master.h"
+-#include "fsm_change.h"
+ 
+ /*****************************************************************************/
+ 
+diff -r 9e65f782e8a1 master/fsm_coe.c
+--- a/master/fsm_coe.c	Tue Feb 13 17:16:01 2018 +0100
++++ b/master/fsm_coe.c	Tue May 15 10:08:44 2018 -0600
+@@ -33,10 +33,11 @@
+ 
+ /*****************************************************************************/
+ 
++#include "fsm_coe.h"
+ #include "globals.h"
+ #include "master.h"
++#include "slave.h"
+ #include "mailbox.h"
+-#include "fsm_coe.h"
+ #include "slave_config.h"
+ 
+ /*****************************************************************************/
+diff -r 9e65f782e8a1 master/fsm_coe.h
+--- a/master/fsm_coe.h	Tue Feb 13 17:16:01 2018 +0100
++++ b/master/fsm_coe.h	Tue May 15 10:08:44 2018 -0600
+@@ -39,7 +39,6 @@
+ 
+ #include "globals.h"
+ #include "datagram.h"
+-#include "slave.h"
+ #include "sdo.h"
+ #include "sdo_request.h"
+ 
+diff -r 9e65f782e8a1 master/fsm_foe.c
+--- a/master/fsm_foe.c	Tue Feb 13 17:16:01 2018 +0100
++++ b/master/fsm_foe.c	Tue May 15 10:08:44 2018 -0600
+@@ -34,10 +34,11 @@
+ 
+ /*****************************************************************************/
+ 
++#include "fsm_foe.h"
+ #include "globals.h"
+ #include "master.h"
++#include "slave.h"
+ #include "mailbox.h"
+-#include "fsm_foe.h"
+ #include "foe.h"
+ 
+ /*****************************************************************************/
+diff -r 9e65f782e8a1 master/fsm_foe.h
+--- a/master/fsm_foe.h	Tue Feb 13 17:16:01 2018 +0100
++++ b/master/fsm_foe.h	Tue May 15 10:08:44 2018 -0600
+@@ -38,11 +38,10 @@
+ #ifndef __EC_FSM_FOE_H__
+ #define __EC_FSM_FOE_H__
+ 
+-#include "globals.h"
+ #include "../include/ecrt.h"
+ #include "datagram.h"
+-#include "slave.h"
+ #include "foe_request.h"
++#include "globals.h"
+ 
+ /*****************************************************************************/
+ 
+diff -r 9e65f782e8a1 master/fsm_master.c
+--- a/master/fsm_master.c	Tue Feb 13 17:16:01 2018 +0100
++++ b/master/fsm_master.c	Tue May 15 10:08:44 2018 -0600
+@@ -33,7 +33,7 @@
+ 
+ /*****************************************************************************/
+ 
+-#include "globals.h"
++#include "fsm_master.h"
+ #include "master.h"
+ #include "mailbox.h"
+ #include "slave_config.h"
+@@ -41,7 +41,7 @@
+ #include "ethernet.h"
+ #endif
+ 
+-#include "fsm_master.h"
++#include "globals.h"
+ #include "fsm_foe.h"
+ 
+ /*****************************************************************************/
+diff -r 9e65f782e8a1 master/fsm_master.h
+--- a/master/fsm_master.h	Tue Feb 13 17:16:01 2018 +0100
++++ b/master/fsm_master.h	Tue May 15 10:08:44 2018 -0600
+@@ -37,7 +37,6 @@
+ #ifndef __EC_FSM_MASTER_H__
+ #define __EC_FSM_MASTER_H__
+ 
+-#include "globals.h"
+ #include "datagram.h"
+ #include "foe_request.h"
+ #include "sdo_request.h"
+@@ -45,6 +44,7 @@
+ #include "fsm_slave_config.h"
+ #include "fsm_slave_scan.h"
+ #include "fsm_pdo.h"
++#include "globals.h"
+ 
+ /*****************************************************************************/
+ 
+diff -r 9e65f782e8a1 master/fsm_pdo.c
+--- a/master/fsm_pdo.c	Tue Feb 13 17:16:01 2018 +0100
++++ b/master/fsm_pdo.c	Tue May 15 10:08:44 2018 -0600
+@@ -33,12 +33,11 @@
+ 
+ /*****************************************************************************/
+ 
+-#include "globals.h"
++#include "fsm_pdo.h"
+ #include "master.h"
+ #include "mailbox.h"
+ #include "slave_config.h"
+-
+-#include "fsm_pdo.h"
++#include "globals.h"
+ 
+ /*****************************************************************************/
+ 
+diff -r 9e65f782e8a1 master/fsm_pdo.h
+--- a/master/fsm_pdo.h	Tue Feb 13 17:16:01 2018 +0100
++++ b/master/fsm_pdo.h	Tue May 15 10:08:44 2018 -0600
+@@ -37,10 +37,13 @@
+ #ifndef __EC_FSM_PDO_H__
+ #define __EC_FSM_PDO_H__
+ 
+-#include "globals.h"
+ #include "datagram.h"
++#include "pdo.h"
++#include "pdo_list.h"
+ #include "fsm_coe.h"
++#include "sync.h"
+ #include "fsm_pdo_entry.h"
++#include "globals.h"
+ 
+ /*****************************************************************************/
+ 
+diff -r 9e65f782e8a1 master/fsm_pdo_entry.c
+--- a/master/fsm_pdo_entry.c	Tue Feb 13 17:16:01 2018 +0100
++++ b/master/fsm_pdo_entry.c	Tue May 15 10:08:44 2018 -0600
+@@ -33,12 +33,12 @@
+ 
+ /*****************************************************************************/
+ 
++#include "fsm_pdo_entry.h"
+ #include "globals.h"
+ #include "master.h"
+ #include "mailbox.h"
+ #include "slave_config.h"
+ 
+-#include "fsm_pdo_entry.h"
+ 
+ /*****************************************************************************/
+ 
+diff -r 9e65f782e8a1 master/fsm_pdo_entry.h
+--- a/master/fsm_pdo_entry.h	Tue Feb 13 17:16:01 2018 +0100
++++ b/master/fsm_pdo_entry.h	Tue May 15 10:08:44 2018 -0600
+@@ -36,9 +36,11 @@
+ #ifndef __EC_FSM_PDO_ENTRY_H__
+ #define __EC_FSM_PDO_ENTRY_H__
+ 
+-#include "globals.h"
+ #include "datagram.h"
+ #include "fsm_coe.h"
++#include "pdo_entry.h"
++#include "pdo.h"
++#include "globals.h"
+ 
+ /*****************************************************************************/
+ 
+diff -r 9e65f782e8a1 master/fsm_sii.c
+--- a/master/fsm_sii.c	Tue Feb 13 17:16:01 2018 +0100
++++ b/master/fsm_sii.c	Tue May 15 10:08:44 2018 -0600
+@@ -34,10 +34,10 @@
+ 
+ /*****************************************************************************/
+ 
+-#include "globals.h"
++#include "fsm_sii.h"
+ #include "mailbox.h"
+ #include "master.h"
+-#include "fsm_sii.h"
++#include "globals.h"
+ 
+ /** Read/write timeout [ms].
+  *
+diff -r 9e65f782e8a1 master/fsm_sii.h
+--- a/master/fsm_sii.h	Tue Feb 13 17:16:01 2018 +0100
++++ b/master/fsm_sii.h	Tue May 15 10:08:44 2018 -0600
+@@ -37,9 +37,9 @@
+ #ifndef __EC_FSM_SII_H__
+ #define __EC_FSM_SII_H__
+ 
+-#include "globals.h"
+ #include "datagram.h"
+ #include "slave.h"
++#include "globals.h"
+ 
+ /*****************************************************************************/
+ 
+diff -r 9e65f782e8a1 master/fsm_slave.c
+--- a/master/fsm_slave.c	Tue Feb 13 17:16:01 2018 +0100
++++ b/master/fsm_slave.c	Tue May 15 10:08:44 2018 -0600
+@@ -33,12 +33,11 @@
+ 
+ /*****************************************************************************/
+ 
+-#include "globals.h"
++#include "fsm_slave.h"
+ #include "master.h"
+ #include "mailbox.h"
+ #include "slave_config.h"
+-
+-#include "fsm_slave.h"
++#include "globals.h"
+ 
+ /*****************************************************************************/
+ 
+diff -r 9e65f782e8a1 master/fsm_slave.h
+--- a/master/fsm_slave.h	Tue Feb 13 17:16:01 2018 +0100
++++ b/master/fsm_slave.h	Tue May 15 10:08:44 2018 -0600
+@@ -37,13 +37,14 @@
+ #ifndef __EC_FSM_SLAVE_H__
+ #define __EC_FSM_SLAVE_H__
+ 
+-#include "globals.h"
+ #include "datagram.h"
+ #include "sdo_request.h"
+ #include "reg_request.h"
++#include "foe_request.h"
+ #include "fsm_coe.h"
+ #include "fsm_foe.h"
+ #include "fsm_soe.h"
++#include "globals.h"
+ 
+ /*****************************************************************************/
+ 
+diff -r 9e65f782e8a1 master/fsm_slave_config.c
+--- a/master/fsm_slave_config.c	Tue Feb 13 17:16:01 2018 +0100
++++ b/master/fsm_slave_config.c	Tue May 15 10:08:44 2018 -0600
+@@ -34,13 +34,13 @@
+ 
+ /*****************************************************************************/
+ 
+-#include <asm/div64.h>
+-
+-#include "globals.h"
++#include "fsm_slave_config.h"
+ #include "master.h"
+ #include "mailbox.h"
+ #include "slave_config.h"
+-#include "fsm_slave_config.h"
++#include "globals.h"
++
++#include <asm/div64.h>
+ 
+ /*****************************************************************************/
+ 
+diff -r 9e65f782e8a1 master/fsm_slave_config.h
+--- a/master/fsm_slave_config.h	Tue Feb 13 17:16:01 2018 +0100
++++ b/master/fsm_slave_config.h	Tue May 15 10:08:44 2018 -0600
+@@ -37,12 +37,12 @@
+ #ifndef __EC_FSM_SLAVE_CONFIG_H__
+ #define __EC_FSM_SLAVE_CONFIG_H__
+ 
+-#include "globals.h"
+ #include "slave.h"
+ #include "datagram.h"
+ #include "fsm_change.h"
+ #include "fsm_coe.h"
+ #include "fsm_pdo.h"
++#include "globals.h"
+ 
+ /*****************************************************************************/
+ 
+diff -r 9e65f782e8a1 master/fsm_slave_scan.c
+--- a/master/fsm_slave_scan.c	Tue Feb 13 17:16:01 2018 +0100
++++ b/master/fsm_slave_scan.c	Tue May 15 10:08:44 2018 -0600
+@@ -34,12 +34,11 @@
+ 
+ /*****************************************************************************/
+ 
+-#include "globals.h"
++#include "fsm_slave_scan.h"
+ #include "master.h"
+ #include "mailbox.h"
+ #include "slave_config.h"
+-
+-#include "fsm_slave_scan.h"
++#include "globals.h"
+ 
+ /*****************************************************************************/
+ 
+diff -r 9e65f782e8a1 master/fsm_slave_scan.h
+--- a/master/fsm_slave_scan.h	Tue Feb 13 17:16:01 2018 +0100
++++ b/master/fsm_slave_scan.h	Tue May 15 10:08:44 2018 -0600
+@@ -37,13 +37,14 @@
+ #ifndef __EC_FSM_SLAVE_SCAN_H__
+ #define __EC_FSM_SLAVE_SCAN_H__
+ 
+-#include "globals.h"
+ #include "datagram.h"
+ #include "slave.h"
++#include "fsm_slave_config.h"
+ #include "fsm_sii.h"
+ #include "fsm_change.h"
+ #include "fsm_coe.h"
+ #include "fsm_pdo.h"
++#include "globals.h"
+ 
+ /*****************************************************************************/
+ 
+diff -r 9e65f782e8a1 master/fsm_soe.c
+--- a/master/fsm_soe.c	Tue Feb 13 17:16:01 2018 +0100
++++ b/master/fsm_soe.c	Tue May 15 10:08:44 2018 -0600
+@@ -34,10 +34,11 @@
+ 
+ /*****************************************************************************/
+ 
+-#include "globals.h"
++#include "fsm_soe.h"
+ #include "master.h"
++#include "slave.h"
+ #include "mailbox.h"
+-#include "fsm_soe.h"
++#include "globals.h"
+ 
+ /*****************************************************************************/
+ 
+diff -r 9e65f782e8a1 master/fsm_soe.h
+--- a/master/fsm_soe.h	Tue Feb 13 17:16:01 2018 +0100
++++ b/master/fsm_soe.h	Tue May 15 10:08:44 2018 -0600
+@@ -37,10 +37,9 @@
+ #ifndef __EC_FSM_SOE_H__
+ #define __EC_FSM_SOE_H__
+ 
+-#include "globals.h"
+ #include "datagram.h"
+-#include "slave.h"
+ #include "soe_request.h"
++#include "globals.h"
+ 
+ /*****************************************************************************/
+ 
+diff -r 9e65f782e8a1 master/globals.h
+--- a/master/globals.h	Tue Feb 13 17:16:01 2018 +0100
++++ b/master/globals.h	Tue May 15 10:08:44 2018 -0600
+@@ -11,8 +11,8 @@
+  *  published by the Free Software Foundation.
+  *
+  *  The IgH EtherCAT Master is distributed in the hope that it will be useful,
++ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General
+  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General
+  *  Public License for more details.
+  *
+  *  You should have received a copy of the GNU General Public License along
+diff -r 9e65f782e8a1 master/ioctl.c
+--- a/master/ioctl.c	Tue Feb 13 17:16:01 2018 +0100
++++ b/master/ioctl.c	Tue May 15 10:08:44 2018 -0600
+@@ -34,14 +34,14 @@
+ 
+ /*****************************************************************************/
+ 
+-#include <linux/module.h>
+-#include <linux/vmalloc.h>
+-
++#include "ioctl.h"
+ #include "master.h"
+ #include "slave_config.h"
+ #include "voe_handler.h"
+ #include "ethernet.h"
+-#include "ioctl.h"
++
++#include <linux/module.h>
++#include <linux/vmalloc.h>
+ 
+ /** Set to 1 to enable ioctl() latency tracing.
+  *
+diff -r 9e65f782e8a1 master/ioctl.h
+--- a/master/ioctl.h	Tue Feb 13 17:16:01 2018 +0100
++++ b/master/ioctl.h	Tue May 15 10:08:44 2018 -0600
+@@ -37,10 +37,10 @@
+ #ifndef __EC_IOCTL_H__
+ #define __EC_IOCTL_H__
+ 
++#include "globals.h"
++
+ #include <linux/ioctl.h>
+ 
+-#include "globals.h"
+-
+ /*****************************************************************************/
+ 
+ /** \cond */
+diff -r 9e65f782e8a1 master/mailbox.c
+--- a/master/mailbox.c	Tue Feb 13 17:16:01 2018 +0100
++++ b/master/mailbox.c	Tue May 15 10:08:44 2018 -0600
+@@ -34,13 +34,13 @@
+ 
+ /*****************************************************************************/
+ 
+-#include <linux/slab.h>
+-#include <linux/delay.h>
+-
+ #include "mailbox.h"
+ #include "datagram.h"
+ #include "master.h"
+ 
++#include <linux/slab.h>
++#include <linux/delay.h>
++
+ /*****************************************************************************/
+ 
+ /**
+diff -r 9e65f782e8a1 master/master.c
+--- a/master/master.c	Tue Feb 13 17:16:01 2018 +0100
++++ b/master/master.c	Tue May 15 10:08:44 2018 -0600
+@@ -36,6 +36,16 @@
+ 
+ /*****************************************************************************/
+ 
++#include "master.h"
++#include "slave.h"
++#include "slave_config.h"
++#include "device.h"
++#include "datagram.h"
++#ifdef EC_EOE
++#include "ethernet.h"
++#endif
++#include "globals.h"
++
+ #include <linux/module.h>
+ #include <linux/kernel.h>
+ #include <linux/string.h>
+@@ -49,16 +59,6 @@
+ #include <linux/sched/types.h> // struct sched_param
+ #endif
+ 
+-#include "globals.h"
+-#include "slave.h"
+-#include "slave_config.h"
+-#include "device.h"
+-#include "datagram.h"
+-#ifdef EC_EOE
+-#include "ethernet.h"
+-#endif
+-#include "master.h"
+-
+ /*****************************************************************************/
+ 
+ /** Set to 1 to enable external datagram injection debugging.
+diff -r 9e65f782e8a1 master/master.h
+--- a/master/master.h	Tue Feb 13 17:16:01 2018 +0100
++++ b/master/master.h	Tue May 15 10:08:44 2018 -0600
+@@ -37,6 +37,16 @@
+ #ifndef __EC_MASTER_H__
+ #define __EC_MASTER_H__
+ 
++#include "device.h"
++#include "domain.h"
++#include "ethernet.h"
++#include "fsm_master.h"
++#include "cdev.h"
++
++#ifdef EC_RTDM
++#include "rtdm.h"
++#endif
++
+ #include <linux/version.h>
+ #include <linux/list.h>
+ #include <linux/timer.h>
+@@ -49,16 +59,6 @@
+ #include <asm/semaphore.h>
+ #endif
+ 
+-#include "device.h"
+-#include "domain.h"
+-#include "ethernet.h"
+-#include "fsm_master.h"
+-#include "cdev.h"
+-
+-#ifdef EC_RTDM
+-#include "rtdm.h"
+-#endif
+-
+ /*****************************************************************************/
+ 
+ /** Convenience macro for printing master-specific information to syslog.
+diff -r 9e65f782e8a1 master/module.c
+--- a/master/module.c	Tue Feb 13 17:16:01 2018 +0100
++++ b/master/module.c	Tue May 15 10:08:44 2018 -0600
+@@ -33,14 +33,14 @@
+ 
+ /*****************************************************************************/
+ 
++#include "master.h"
++#include "device.h"
++#include "globals.h"
++
+ #include <linux/module.h>
+ #include <linux/device.h>
+ #include <linux/err.h>
+ 
+-#include "globals.h"
+-#include "master.h"
+-#include "device.h"
+-
+ /*****************************************************************************/
+ 
+ #define MAX_MASTERS 32 /**< Maximum number of masters. */
+diff -r 9e65f782e8a1 master/pdo.c
+--- a/master/pdo.c	Tue Feb 13 17:16:01 2018 +0100
++++ b/master/pdo.c	Tue May 15 10:08:44 2018 -0600
+@@ -34,11 +34,11 @@
+ 
+ /*****************************************************************************/
+ 
++#include "pdo.h"
++
+ #include <linux/slab.h>
+ #include <linux/err.h>
+ 
+-#include "pdo.h"
+-
+ /*****************************************************************************/
+ 
+ /** PDO constructor.
+diff -r 9e65f782e8a1 master/pdo.h
+--- a/master/pdo.h	Tue Feb 13 17:16:01 2018 +0100
++++ b/master/pdo.h	Tue May 15 10:08:44 2018 -0600
+@@ -37,10 +37,10 @@
+ #ifndef __EC_PDO_H__
+ #define __EC_PDO_H__
+ 
+-#include <linux/list.h>
++#include "pdo_entry.h"
++#include "globals.h"
+ 
+-#include "globals.h"
+-#include "pdo_entry.h"
++#include <linux/list.h>
+ 
+ /*****************************************************************************/
+ 
+diff -r 9e65f782e8a1 master/pdo_entry.c
+--- a/master/pdo_entry.c	Tue Feb 13 17:16:01 2018 +0100
++++ b/master/pdo_entry.c	Tue May 15 10:08:44 2018 -0600
+@@ -34,10 +34,10 @@
+ 
+ /*****************************************************************************/
+ 
++#include "pdo_entry.h"
++
+ #include <linux/slab.h>
+ 
+-#include "pdo_entry.h"
+-
+ /*****************************************************************************/
+ 
+ /** PDO entry constructor.
+diff -r 9e65f782e8a1 master/pdo_entry.h
+--- a/master/pdo_entry.h	Tue Feb 13 17:16:01 2018 +0100
++++ b/master/pdo_entry.h	Tue May 15 10:08:44 2018 -0600
+@@ -37,10 +37,10 @@
+ #ifndef __EC_PDO_ENTRY_H__
+ #define __EC_PDO_ENTRY_H__
+ 
++#include "globals.h"
++
+ #include <linux/list.h>
+ 
+-#include "globals.h"
+-
+ /*****************************************************************************/
+ 
+ /** PDO entry description.
+diff -r 9e65f782e8a1 master/pdo_list.c
+--- a/master/pdo_list.c	Tue Feb 13 17:16:01 2018 +0100
++++ b/master/pdo_list.c	Tue May 15 10:08:44 2018 -0600
+@@ -34,14 +34,13 @@
+ 
+ /*****************************************************************************/
+ 
+-#include <linux/module.h>
+-
+-#include "globals.h"
++#include "pdo_list.h"
+ #include "pdo.h"
+ #include "slave_config.h"
+ #include "master.h"
++#include "globals.h"
+ 
+-#include "pdo_list.h"
++#include <linux/module.h>
+ 
+ /*****************************************************************************/
+ 
+diff -r 9e65f782e8a1 master/pdo_list.h
+--- a/master/pdo_list.h	Tue Feb 13 17:16:01 2018 +0100
++++ b/master/pdo_list.h	Tue May 15 10:08:44 2018 -0600
+@@ -37,11 +37,11 @@
+ #ifndef __EC_PDO_LIST_H__
+ #define __EC_PDO_LIST_H__
+ 
+-#include <linux/list.h>
+-
+ #include "globals.h"
+ #include "pdo.h"
+ 
++#include <linux/list.h>
++
+ /*****************************************************************************/
+ 
+ /** EtherCAT PDO list.
+diff -r 9e65f782e8a1 master/reg_request.c
+--- a/master/reg_request.c	Tue Feb 13 17:16:01 2018 +0100
++++ b/master/reg_request.c	Tue May 15 10:08:44 2018 -0600
+@@ -33,12 +33,12 @@
+ 
+ /*****************************************************************************/
+ 
++#include "reg_request.h"
++
+ #include <linux/module.h>
+ #include <linux/jiffies.h>
+ #include <linux/slab.h>
+ 
+-#include "reg_request.h"
+-
+ /*****************************************************************************/
+ 
+ /** Register request constructor.
+diff -r 9e65f782e8a1 master/reg_request.h
+--- a/master/reg_request.h	Tue Feb 13 17:16:01 2018 +0100
++++ b/master/reg_request.h	Tue May 15 10:08:44 2018 -0600
+@@ -37,10 +37,10 @@
+ #ifndef __EC_REG_REQUEST_H__
+ #define __EC_REG_REQUEST_H__
+ 
++#include "globals.h"
++
+ #include <linux/list.h>
+ 
+-#include "globals.h"
+-
+ /*****************************************************************************/
+ 
+ /** Register request.
+diff -r 9e65f782e8a1 master/rtdm.c
+--- a/master/rtdm.c	Tue Feb 13 17:16:01 2018 +0100
++++ b/master/rtdm.c	Tue May 15 10:08:44 2018 -0600
+@@ -30,16 +30,16 @@
+  * RTDM interface.
+  */
+ 
++ #include "rtdm.h"
++ #include "master.h"
++ #include "ioctl.h"
++
+ #include <linux/module.h>
+ #include <linux/slab.h>
+ #include <linux/mman.h>
+ 
+ #include <rtdm/rtdm_driver.h>
+ 
+-#include "master.h"
+-#include "ioctl.h"
+-#include "rtdm.h"
+-
+ /** Set to 1 to enable device operations debugging.
+  */
+ #define DEBUG 0
+diff -r 9e65f782e8a1 master/sdo.c
+--- a/master/sdo.c	Tue Feb 13 17:16:01 2018 +0100
++++ b/master/sdo.c	Tue May 15 10:08:44 2018 -0600
+@@ -34,11 +34,10 @@
+ 
+ /*****************************************************************************/
+ 
+-#include <linux/slab.h>
+-
++#include "sdo.h"
+ #include "master.h"
+ 
+-#include "sdo.h"
++#include <linux/slab.h>
+ 
+ /*****************************************************************************/
+ 
+diff -r 9e65f782e8a1 master/sdo.h
+--- a/master/sdo.h	Tue Feb 13 17:16:01 2018 +0100
++++ b/master/sdo.h	Tue May 15 10:08:44 2018 -0600
+@@ -37,10 +37,10 @@
+ #ifndef __EC_SDO_H__
+ #define __EC_SDO_H__
+ 
+-#include <linux/list.h>
++#include "sdo_entry.h"
++#include "globals.h"
+ 
+-#include "globals.h"
+-#include "sdo_entry.h"
++#include <linux/list.h>
+ 
+ /*****************************************************************************/
+ 
+diff -r 9e65f782e8a1 master/sdo_entry.c
+--- a/master/sdo_entry.c	Tue Feb 13 17:16:01 2018 +0100
++++ b/master/sdo_entry.c	Tue May 15 10:08:44 2018 -0600
+@@ -34,10 +34,10 @@
+ 
+ /*****************************************************************************/
+ 
++#include "sdo_entry.h"
++
+ #include <linux/slab.h>
+ 
+-#include "sdo_entry.h"
+-
+ /*****************************************************************************/
+ 
+ /** Constructor.
+diff -r 9e65f782e8a1 master/sdo_entry.h
+--- a/master/sdo_entry.h	Tue Feb 13 17:16:01 2018 +0100
++++ b/master/sdo_entry.h	Tue May 15 10:08:44 2018 -0600
+@@ -37,11 +37,11 @@
+ #ifndef __EC_SDO_ENTRY_H__
+ #define __EC_SDO_ENTRY_H__
+ 
++#include "globals.h"
++
+ #include <linux/list.h>
+ #include <linux/kobject.h>
+ 
+-#include "globals.h"
+-
+ /*****************************************************************************/
+ 
+ struct ec_sdo;
+diff -r 9e65f782e8a1 master/sdo_request.c
+--- a/master/sdo_request.c	Tue Feb 13 17:16:01 2018 +0100
++++ b/master/sdo_request.c	Tue May 15 10:08:44 2018 -0600
+@@ -33,12 +33,12 @@
+ 
+ /*****************************************************************************/
+ 
++#include "sdo_request.h"
++
+ #include <linux/module.h>
+ #include <linux/jiffies.h>
+ #include <linux/slab.h>
+ 
+-#include "sdo_request.h"
+-
+ /*****************************************************************************/
+ 
+ /** Default timeout in ms to wait for SDO transfer responses.
+diff -r 9e65f782e8a1 master/sdo_request.h
+--- a/master/sdo_request.h	Tue Feb 13 17:16:01 2018 +0100
++++ b/master/sdo_request.h	Tue May 15 10:08:44 2018 -0600
+@@ -37,10 +37,10 @@
+ #ifndef __EC_SDO_REQUEST_H__
+ #define __EC_SDO_REQUEST_H__
+ 
++#include "globals.h"
++
+ #include <linux/list.h>
+ 
+-#include "globals.h"
+-
+ /*****************************************************************************/
+ 
+ /** CANopen SDO request.
+diff -r 9e65f782e8a1 master/slave.c
+--- a/master/slave.c	Tue Feb 13 17:16:01 2018 +0100
++++ b/master/slave.c	Tue May 15 10:08:44 2018 -0600
+@@ -34,15 +34,14 @@
+ 
+ /*****************************************************************************/
+ 
+-#include <linux/module.h>
+-#include <linux/delay.h>
+-
+-#include "globals.h"
++#include "slave.h"
+ #include "datagram.h"
+ #include "master.h"
+ #include "slave_config.h"
++#include "globals.h"
+ 
+-#include "slave.h"
++#include <linux/module.h>
++#include <linux/delay.h>
+ 
+ /*****************************************************************************/
+ 
+diff -r 9e65f782e8a1 master/slave.h
+--- a/master/slave.h	Tue Feb 13 17:16:01 2018 +0100
++++ b/master/slave.h	Tue May 15 10:08:44 2018 -0600
+@@ -37,15 +37,15 @@
+ #ifndef __EC_SLAVE_H__
+ #define __EC_SLAVE_H__
+ 
+-#include <linux/list.h>
+-#include <linux/kobject.h>
+-
+-#include "globals.h"
+ #include "datagram.h"
+ #include "pdo.h"
+ #include "sync.h"
+ #include "sdo.h"
+ #include "fsm_slave.h"
++#include "globals.h"
++
++#include <linux/list.h>
++#include <linux/kobject.h>
+ 
+ /*****************************************************************************/
+ 
+diff -r 9e65f782e8a1 master/slave_config.c
+--- a/master/slave_config.c	Tue Feb 13 17:16:01 2018 +0100
++++ b/master/slave_config.c	Tue May 15 10:08:44 2018 -0600
+@@ -36,15 +36,14 @@
+ 
+ /*****************************************************************************/
+ 
++#include "slave_config.h"
++#include "master.h"
++#include "voe_handler.h"
++#include "globals.h"
++
+ #include <linux/module.h>
+ #include <linux/slab.h>
+ 
+-#include "globals.h"
+-#include "master.h"
+-#include "voe_handler.h"
+-
+-#include "slave_config.h"
+-
+ /*****************************************************************************/
+ 
+ /** Slave configuration constructor.
+diff -r 9e65f782e8a1 master/slave_config.h
+--- a/master/slave_config.h	Tue Feb 13 17:16:01 2018 +0100
++++ b/master/slave_config.h	Tue May 15 10:08:44 2018 -0600
+@@ -37,13 +37,13 @@
+ #ifndef __EC_SLAVE_CONFIG_H__
+ #define __EC_SLAVE_CONFIG_H__
+ 
+-#include <linux/list.h>
+-
+-#include "globals.h"
+ #include "slave.h"
+ #include "sync_config.h"
+ #include "fmmu_config.h"
+ #include "coe_emerg_ring.h"
++#include "globals.h"
++
++#include <linux/list.h>
+ 
+ /*****************************************************************************/
+ 
+diff -r 9e65f782e8a1 master/soe_request.c
+--- a/master/soe_request.c	Tue Feb 13 17:16:01 2018 +0100
++++ b/master/soe_request.c	Tue May 15 10:08:44 2018 -0600
+@@ -33,12 +33,12 @@
+ 
+ /*****************************************************************************/
+ 
++#include "soe_request.h"
++
+ #include <linux/module.h>
+ #include <linux/jiffies.h>
+ #include <linux/slab.h>
+ 
+-#include "soe_request.h"
+-
+ /*****************************************************************************/
+ 
+ /** Default timeout in ms to wait for SoE responses.
+diff -r 9e65f782e8a1 master/soe_request.h
+--- a/master/soe_request.h	Tue Feb 13 17:16:01 2018 +0100
++++ b/master/soe_request.h	Tue May 15 10:08:44 2018 -0600
+@@ -37,10 +37,10 @@
+ #ifndef __EC_SOE_REQUEST_H__
+ #define __EC_SOE_REQUEST_H__
+ 
++#include "globals.h"
++
+ #include <linux/list.h>
+ 
+-#include "globals.h"
+-
+ /*****************************************************************************/
+ 
+ /** Sercos-over-EtherCAT request.
+diff -r 9e65f782e8a1 master/sync.c
+--- a/master/sync.c	Tue Feb 13 17:16:01 2018 +0100
++++ b/master/sync.c	Tue May 15 10:08:44 2018 -0600
+@@ -33,11 +33,11 @@
+ 
+ /*****************************************************************************/
+ 
+-#include "globals.h"
++#include "sync.h"
+ #include "slave.h"
+ #include "master.h"
+ #include "pdo.h"
+-#include "sync.h"
++#include "globals.h"
+ 
+ /*****************************************************************************/
+ 
+diff -r 9e65f782e8a1 master/sync.h
+--- a/master/sync.h	Tue Feb 13 17:16:01 2018 +0100
++++ b/master/sync.h	Tue May 15 10:08:44 2018 -0600
+@@ -36,9 +36,9 @@
+ #ifndef __EC_SYNC_H__
+ #define __EC_SYNC_H__
+ 
+-#include "globals.h"
+ #include "pdo_list.h"
+ #include "sync_config.h"
++#include "globals.h"
+ 
+ /*****************************************************************************/
+ 
+diff -r 9e65f782e8a1 master/sync_config.c
+--- a/master/sync_config.c	Tue Feb 13 17:16:01 2018 +0100
++++ b/master/sync_config.c	Tue May 15 10:08:44 2018 -0600
+@@ -33,8 +33,8 @@
+ 
+ /*****************************************************************************/
+ 
++#include "sync_config.h"
+ #include "globals.h"
+-#include "sync_config.h"
+ 
+ /*****************************************************************************/
+ 
+diff -r 9e65f782e8a1 master/sync_config.h
+--- a/master/sync_config.h	Tue Feb 13 17:16:01 2018 +0100
++++ b/master/sync_config.h	Tue May 15 10:08:44 2018 -0600
+@@ -36,8 +36,8 @@
+ #ifndef __EC_SYNC_CONFIG_H__
+ #define __EC_SYNC_CONFIG_H__
+ 
++#include "pdo_list.h"
+ #include "globals.h"
+-#include "pdo_list.h"
+ 
+ /*****************************************************************************/
+ 
+diff -r 9e65f782e8a1 master/voe_handler.c
+--- a/master/voe_handler.c	Tue Feb 13 17:16:01 2018 +0100
++++ b/master/voe_handler.c	Tue May 15 10:08:44 2018 -0600
+@@ -33,12 +33,12 @@
+ 
+ /*****************************************************************************/
+ 
+-#include <linux/module.h>
+-
++#include "voe_handler.h"
+ #include "master.h"
+ #include "slave_config.h"
+ #include "mailbox.h"
+-#include "voe_handler.h"
++
++#include <linux/module.h>
+ 
+ /** VoE mailbox type.
+  */
+diff -r 9e65f782e8a1 master/voe_handler.h
+--- a/master/voe_handler.h	Tue Feb 13 17:16:01 2018 +0100
++++ b/master/voe_handler.h	Tue May 15 10:08:44 2018 -0600
+@@ -37,10 +37,10 @@
+ #ifndef __EC_VOE_HANDLER_H__
+ #define __EC_VOE_HANDLER_H__
+ 
+-#include <linux/list.h>
++#include "datagram.h"
++#include "globals.h"
+ 
+-#include "globals.h"
+-#include "datagram.h"
++#include <linux/list.h>
+ 
+ /*****************************************************************************/
+ 
+diff -r 9e65f782e8a1 tool/Command.cpp
+--- a/tool/Command.cpp	Tue Feb 13 17:16:01 2018 +0100
++++ b/tool/Command.cpp	Tue May 15 10:08:44 2018 -0600
+@@ -29,13 +29,13 @@
+  *
+  ****************************************************************************/
+ 
+-#include <map>
+-using namespace std;
+-
+ #include "Command.h"
+ #include "MasterDevice.h"
+ #include "NumberListParser.h"
+ 
++#include <map>
++using namespace std;
++
+ /*****************************************************************************/
+ 
+ typedef map<uint16_t, ec_ioctl_config_t> AliasMap;
+diff -r 9e65f782e8a1 tool/Command.h
+--- a/tool/Command.h	Tue Feb 13 17:16:01 2018 +0100
++++ b/tool/Command.h	Tue May 15 10:08:44 2018 -0600
+@@ -30,14 +30,14 @@
+ #ifndef __COMMAND_H__
+ #define __COMMAND_H__
+ 
++#include "../master/ioctl.h"
++
+ #include <stdexcept>
+ #include <vector>
+ #include <list>
+ #include <sstream>
+ using namespace std;
+ 
+-#include "../master/ioctl.h"
+-
+ class MasterDevice;
+ 
+ /****************************************************************************/
+diff -r 9e65f782e8a1 tool/CommandAlias.cpp
+--- a/tool/CommandAlias.cpp	Tue Feb 13 17:16:01 2018 +0100
++++ b/tool/CommandAlias.cpp	Tue May 15 10:08:44 2018 -0600
+@@ -27,15 +27,15 @@
+  *
+  ****************************************************************************/
+ 
++#include "CommandAlias.h"
++#include "sii_crc.h"
++#include "MasterDevice.h"
++
+ #include <iostream>
+ #include <iomanip>
+ #include <sstream>
+ using namespace std;
+ 
+-#include "CommandAlias.h"
+-#include "sii_crc.h"
+-#include "MasterDevice.h"
+-
+ /*****************************************************************************/
+ 
+ CommandAlias::CommandAlias():
+diff -r 9e65f782e8a1 tool/CommandCStruct.cpp
+--- a/tool/CommandCStruct.cpp	Tue Feb 13 17:16:01 2018 +0100
++++ b/tool/CommandCStruct.cpp	Tue May 15 10:08:44 2018 -0600
+@@ -29,14 +29,14 @@
+  *
+  ****************************************************************************/
+ 
++#include "CommandCStruct.h"
++#include "MasterDevice.h"
++
+ #include <iostream>
+ #include <iomanip>
+ #include <string.h>
+ using namespace std;
+ 
+-#include "CommandCStruct.h"
+-#include "MasterDevice.h"
+-
+ /*****************************************************************************/
+ 
+ CommandCStruct::CommandCStruct():
+diff -r 9e65f782e8a1 tool/CommandConfig.cpp
+--- a/tool/CommandConfig.cpp	Tue Feb 13 17:16:01 2018 +0100
++++ b/tool/CommandConfig.cpp	Tue May 15 10:08:44 2018 -0600
+@@ -29,15 +29,15 @@
+  *
+  ****************************************************************************/
+ 
++#include "CommandConfig.h"
++#include "MasterDevice.h"
++
+ #include <list>
+ #include <iostream>
+ #include <iomanip>
+ #include <sstream>
+ using namespace std;
+ 
+-#include "CommandConfig.h"
+-#include "MasterDevice.h"
+-
+ /*****************************************************************************/
+ 
+ CommandConfig::CommandConfig():
+diff -r 9e65f782e8a1 tool/CommandConfig.h
+--- a/tool/CommandConfig.h	Tue Feb 13 17:16:01 2018 +0100
++++ b/tool/CommandConfig.h	Tue May 15 10:08:44 2018 -0600
+@@ -30,12 +30,12 @@
+ #ifndef __COMMANDCONFIG_H__
+ #define __COMMANDCONFIG_H__
+ 
++#include "Command.h"
++#include "SoeCommand.h"
++
+ #include <list>
+ using namespace std;
+ 
+-#include "Command.h"
+-#include "SoeCommand.h"
+-
+ /****************************************************************************/
+ 
+ class CommandConfig:
+diff -r 9e65f782e8a1 tool/CommandCrc.cpp
+--- a/tool/CommandCrc.cpp	Tue Feb 13 17:16:01 2018 +0100
++++ b/tool/CommandCrc.cpp	Tue May 15 10:08:44 2018 -0600
+@@ -25,14 +25,14 @@
+  *
+  ****************************************************************************/
+ 
++#include "CommandCrc.h"
++#include "MasterDevice.h"
++
+ #include <iostream>
+ #include <iomanip>
+ #include <algorithm>
+ using namespace std;
+ 
+-#include "CommandCrc.h"
+-#include "MasterDevice.h"
+-
+ /*****************************************************************************/
+ 
+ CommandCrc::CommandCrc():
+diff -r 9e65f782e8a1 tool/CommandData.cpp
+--- a/tool/CommandData.cpp	Tue Feb 13 17:16:01 2018 +0100
++++ b/tool/CommandData.cpp	Tue May 15 10:08:44 2018 -0600
+@@ -29,12 +29,12 @@
+  *
+  ****************************************************************************/
+ 
++#include "CommandData.h"
++#include "MasterDevice.h"
++
+ #include <iostream>
+ using namespace std;
+ 
+-#include "CommandData.h"
+-#include "MasterDevice.h"
+-
+ /*****************************************************************************/
+ 
+ CommandData::CommandData():
+diff -r 9e65f782e8a1 tool/CommandDebug.cpp
+--- a/tool/CommandDebug.cpp	Tue Feb 13 17:16:01 2018 +0100
++++ b/tool/CommandDebug.cpp	Tue May 15 10:08:44 2018 -0600
+@@ -29,13 +29,13 @@
+  *
+  ****************************************************************************/
+ 
++#include "CommandDebug.h"
++#include "MasterDevice.h"
++
+ #include <sstream>
+ #include <iomanip>
+ using namespace std;
+ 
+-#include "CommandDebug.h"
+-#include "MasterDevice.h"
+-
+ /*****************************************************************************/
+ 
+ CommandDebug::CommandDebug():
+diff -r 9e65f782e8a1 tool/CommandDomains.cpp
+--- a/tool/CommandDomains.cpp	Tue Feb 13 17:16:01 2018 +0100
++++ b/tool/CommandDomains.cpp	Tue May 15 10:08:44 2018 -0600
+@@ -27,13 +27,13 @@
+  *
+  ****************************************************************************/
+ 
++#include "CommandDomains.h"
++#include "MasterDevice.h"
++
+ #include <iostream>
+ #include <iomanip>
+ using namespace std;
+ 
+-#include "CommandDomains.h"
+-#include "MasterDevice.h"
+-
+ /*****************************************************************************/
+ 
+ CommandDomains::CommandDomains():
+diff -r 9e65f782e8a1 tool/CommandDownload.cpp
+--- a/tool/CommandDownload.cpp	Tue Feb 13 17:16:01 2018 +0100
++++ b/tool/CommandDownload.cpp	Tue May 15 10:08:44 2018 -0600
+@@ -27,13 +27,13 @@
+  *
+  ****************************************************************************/
+ 
++#include "CommandDownload.h"
++#include "MasterDevice.h"
++
+ #include <iostream>
+ #include <iomanip>
+ using namespace std;
+ 
+-#include "CommandDownload.h"
+-#include "MasterDevice.h"
+-
+ /*****************************************************************************/
+ 
+ CommandDownload::CommandDownload():
+diff -r 9e65f782e8a1 tool/CommandEoe.cpp
+--- a/tool/CommandEoe.cpp	Tue Feb 13 17:16:01 2018 +0100
++++ b/tool/CommandEoe.cpp	Tue May 15 10:08:44 2018 -0600
+@@ -27,15 +27,15 @@
+  *
+  ****************************************************************************/
+ 
++#include "CommandEoe.h"
++#include "MasterDevice.h"
++
+ #include <iostream>
+ #include <iomanip>
+ #include <list>
+ #include <string.h>
+ using namespace std;
+ 
+-#include "CommandEoe.h"
+-#include "MasterDevice.h"
+-
+ /*****************************************************************************/
+ 
+ CommandEoe::CommandEoe():
+diff -r 9e65f782e8a1 tool/CommandFoeRead.cpp
+--- a/tool/CommandFoeRead.cpp	Tue Feb 13 17:16:01 2018 +0100
++++ b/tool/CommandFoeRead.cpp	Tue May 15 10:08:44 2018 -0600
+@@ -27,16 +27,16 @@
+  *
+  ****************************************************************************/
+ 
++#include "CommandFoeRead.h"
++#include "foe.h"
++#include "MasterDevice.h"
++
+ #include <string.h>
+ 
+ #include <iostream>
+ #include <iomanip>
+ using namespace std;
+ 
+-#include "CommandFoeRead.h"
+-#include "foe.h"
+-#include "MasterDevice.h"
+-
+ /*****************************************************************************/
+ 
+ CommandFoeRead::CommandFoeRead():
+diff -r 9e65f782e8a1 tool/CommandFoeWrite.cpp
+--- a/tool/CommandFoeWrite.cpp	Tue Feb 13 17:16:01 2018 +0100
++++ b/tool/CommandFoeWrite.cpp	Tue May 15 10:08:44 2018 -0600
+@@ -27,6 +27,10 @@
+  *
+  ****************************************************************************/
+ 
++#include "CommandFoeWrite.h"
++#include "foe.h"
++#include "MasterDevice.h"
++
+ #include <libgen.h> // basename()
+ #include <string.h>
+ 
+@@ -35,10 +39,6 @@
+ #include <fstream>
+ using namespace std;
+ 
+-#include "CommandFoeWrite.h"
+-#include "foe.h"
+-#include "MasterDevice.h"
+-
+ /*****************************************************************************/
+ 
+ CommandFoeWrite::CommandFoeWrite():
+diff -r 9e65f782e8a1 tool/CommandGraph.cpp
+--- a/tool/CommandGraph.cpp	Tue Feb 13 17:16:01 2018 +0100
++++ b/tool/CommandGraph.cpp	Tue May 15 10:08:44 2018 -0600
+@@ -27,14 +27,14 @@
+  *
+  ****************************************************************************/
+ 
++#include "CommandGraph.h"
++#include "MasterDevice.h"
++
+ #include <iostream>
+ #include <map>
+ #include <algorithm>
+ using namespace std;
+ 
+-#include "CommandGraph.h"
+-#include "MasterDevice.h"
+-
+ /*****************************************************************************/
+ 
+ CommandGraph::CommandGraph():
+diff -r 9e65f782e8a1 tool/CommandMaster.cpp
+--- a/tool/CommandMaster.cpp	Tue Feb 13 17:16:01 2018 +0100
++++ b/tool/CommandMaster.cpp	Tue May 15 10:08:44 2018 -0600
+@@ -27,13 +27,13 @@
+  *
+  ****************************************************************************/
+ 
++#include "CommandMaster.h"
++#include "MasterDevice.h"
++
+ #include <iostream>
+ #include <iomanip>
+ using namespace std;
+ 
+-#include "CommandMaster.h"
+-#include "MasterDevice.h"
+-
+ #define MAX_TIME_STR_SIZE 50
+ 
+ /*****************************************************************************/
+diff -r 9e65f782e8a1 tool/CommandPdos.cpp
+--- a/tool/CommandPdos.cpp	Tue Feb 13 17:16:01 2018 +0100
++++ b/tool/CommandPdos.cpp	Tue May 15 10:08:44 2018 -0600
+@@ -27,14 +27,14 @@
+  *
+  ****************************************************************************/
+ 
++#include "CommandPdos.h"
++#include "MasterDevice.h"
++
+ #include <iostream>
+ #include <iomanip>
+ #include <cstring>
+ using namespace std;
+ 
+-#include "CommandPdos.h"
+-#include "MasterDevice.h"
+-
+ /*****************************************************************************/
+ 
+ CommandPdos::CommandPdos():
+diff -r 9e65f782e8a1 tool/CommandRegRead.cpp
+--- a/tool/CommandRegRead.cpp	Tue Feb 13 17:16:01 2018 +0100
++++ b/tool/CommandRegRead.cpp	Tue May 15 10:08:44 2018 -0600
+@@ -27,13 +27,13 @@
+  *
+  ****************************************************************************/
+ 
++#include "CommandRegRead.h"
++#include "MasterDevice.h"
++
+ #include <iostream>
+ #include <iomanip>
+ using namespace std;
+ 
+-#include "CommandRegRead.h"
+-#include "MasterDevice.h"
+-
+ /*****************************************************************************/
+ 
+ CommandRegRead::CommandRegRead():
+diff -r 9e65f782e8a1 tool/CommandRegWrite.cpp
+--- a/tool/CommandRegWrite.cpp	Tue Feb 13 17:16:01 2018 +0100
++++ b/tool/CommandRegWrite.cpp	Tue May 15 10:08:44 2018 -0600
+@@ -27,15 +27,15 @@
+  *
+  ****************************************************************************/
+ 
++#include "CommandRegWrite.h"
++#include "sii_crc.h"
++#include "MasterDevice.h"
++
+ #include <iostream>
+ #include <iomanip>
+ #include <fstream>
+ using namespace std;
+ 
+-#include "CommandRegWrite.h"
+-#include "sii_crc.h"
+-#include "MasterDevice.h"
+-
+ /*****************************************************************************/
+ 
+ CommandRegWrite::CommandRegWrite():
+diff -r 9e65f782e8a1 tool/CommandRescan.cpp
+--- a/tool/CommandRescan.cpp	Tue Feb 13 17:16:01 2018 +0100
++++ b/tool/CommandRescan.cpp	Tue May 15 10:08:44 2018 -0600
+@@ -29,13 +29,13 @@
+  *
+  ****************************************************************************/
+ 
++#include "CommandRescan.h"
++#include "MasterDevice.h"
++
+ #include <sstream>
+ #include <iomanip>
+ using namespace std;
+ 
+-#include "CommandRescan.h"
+-#include "MasterDevice.h"
+-
+ /*****************************************************************************/
+ 
+ CommandRescan::CommandRescan():
+diff -r 9e65f782e8a1 tool/CommandSdos.cpp
+--- a/tool/CommandSdos.cpp	Tue Feb 13 17:16:01 2018 +0100
++++ b/tool/CommandSdos.cpp	Tue May 15 10:08:44 2018 -0600
+@@ -27,13 +27,13 @@
+  *
+  ****************************************************************************/
+ 
++#include "CommandSdos.h"
++#include "MasterDevice.h"
++
+ #include <iostream>
+ #include <iomanip>
+ using namespace std;
+ 
+-#include "CommandSdos.h"
+-#include "MasterDevice.h"
+-
+ /*****************************************************************************/
+ 
+ CommandSdos::CommandSdos():
+diff -r 9e65f782e8a1 tool/CommandSiiRead.cpp
+--- a/tool/CommandSiiRead.cpp	Tue Feb 13 17:16:01 2018 +0100
++++ b/tool/CommandSiiRead.cpp	Tue May 15 10:08:44 2018 -0600
+@@ -27,13 +27,13 @@
+  *
+  ****************************************************************************/
+ 
++#include "CommandSiiRead.h"
++#include "MasterDevice.h"
++
+ #include <iostream>
+ #include <iomanip>
+ using namespace std;
+ 
+-#include "CommandSiiRead.h"
+-#include "MasterDevice.h"
+-
+ /*****************************************************************************/
+ 
+ CommandSiiRead::CommandSiiRead():
+diff -r 9e65f782e8a1 tool/CommandSiiWrite.cpp
+--- a/tool/CommandSiiWrite.cpp	Tue Feb 13 17:16:01 2018 +0100
++++ b/tool/CommandSiiWrite.cpp	Tue May 15 10:08:44 2018 -0600
+@@ -27,15 +27,15 @@
+  *
+  ****************************************************************************/
+ 
++#include "CommandSiiWrite.h"
++#include "sii_crc.h"
++#include "MasterDevice.h"
++
+ #include <iostream>
+ #include <iomanip>
+ #include <fstream>
+ using namespace std;
+ 
+-#include "CommandSiiWrite.h"
+-#include "sii_crc.h"
+-#include "MasterDevice.h"
+-
+ /*****************************************************************************/
+ 
+ CommandSiiWrite::CommandSiiWrite():
+diff -r 9e65f782e8a1 tool/CommandSlaves.cpp
+--- a/tool/CommandSlaves.cpp	Tue Feb 13 17:16:01 2018 +0100
++++ b/tool/CommandSlaves.cpp	Tue May 15 10:08:44 2018 -0600
+@@ -27,15 +27,15 @@
+  *
+  ****************************************************************************/
+ 
++#include "CommandSlaves.h"
++#include "MasterDevice.h"
++
+ #include <iostream>
+ #include <iomanip>
+ #include <list>
+ #include <string.h>
+ using namespace std;
+ 
+-#include "CommandSlaves.h"
+-#include "MasterDevice.h"
+-
+ /*****************************************************************************/
+ 
+ CommandSlaves::CommandSlaves():
+diff -r 9e65f782e8a1 tool/CommandSoeRead.cpp
+--- a/tool/CommandSoeRead.cpp	Tue Feb 13 17:16:01 2018 +0100
++++ b/tool/CommandSoeRead.cpp	Tue May 15 10:08:44 2018 -0600
+@@ -27,13 +27,13 @@
+  *
+  ****************************************************************************/
+ 
++#include "CommandSoeRead.h"
++#include "MasterDevice.h"
++
+ #include <iostream>
+ #include <iomanip>
+ using namespace std;
+ 
+-#include "CommandSoeRead.h"
+-#include "MasterDevice.h"
+-
+ /*****************************************************************************/
+ 
+ CommandSoeRead::CommandSoeRead():
+diff -r 9e65f782e8a1 tool/CommandSoeWrite.cpp
+--- a/tool/CommandSoeWrite.cpp	Tue Feb 13 17:16:01 2018 +0100
++++ b/tool/CommandSoeWrite.cpp	Tue May 15 10:08:44 2018 -0600
+@@ -27,13 +27,13 @@
+  *
+  ****************************************************************************/
+ 
++#include "CommandSoeWrite.h"
++#include "MasterDevice.h"
++
+ #include <iostream>
+ #include <iomanip>
+ using namespace std;
+ 
+-#include "CommandSoeWrite.h"
+-#include "MasterDevice.h"
+-
+ /*****************************************************************************/
+ 
+ CommandSoeWrite::CommandSoeWrite():
+diff -r 9e65f782e8a1 tool/CommandStates.cpp
+--- a/tool/CommandStates.cpp	Tue Feb 13 17:16:01 2018 +0100
++++ b/tool/CommandStates.cpp	Tue May 15 10:08:44 2018 -0600
+@@ -27,13 +27,13 @@
+  *
+  ****************************************************************************/
+ 
++#include "CommandStates.h"
++#include "MasterDevice.h"
++
+ #include <iostream>
+ #include <algorithm>
+ using namespace std;
+ 
+-#include "CommandStates.h"
+-#include "MasterDevice.h"
+-
+ /*****************************************************************************/
+ 
+ CommandStates::CommandStates():
+diff -r 9e65f782e8a1 tool/CommandUpload.cpp
+--- a/tool/CommandUpload.cpp	Tue Feb 13 17:16:01 2018 +0100
++++ b/tool/CommandUpload.cpp	Tue May 15 10:08:44 2018 -0600
+@@ -27,13 +27,13 @@
+  *
+  ****************************************************************************/
+ 
++#include "CommandUpload.h"
++#include "MasterDevice.h"
++
+ #include <iostream>
+ #include <iomanip>
+ using namespace std;
+ 
+-#include "CommandUpload.h"
+-#include "MasterDevice.h"
+-
+ /*****************************************************************************/
+ 
+ CommandUpload::CommandUpload():
+diff -r 9e65f782e8a1 tool/CommandVersion.cpp
+--- a/tool/CommandVersion.cpp	Tue Feb 13 17:16:01 2018 +0100
++++ b/tool/CommandVersion.cpp	Tue May 15 10:08:44 2018 -0600
+@@ -27,11 +27,11 @@
+  *
+  ****************************************************************************/
+ 
++#include "CommandVersion.h"
++
+ #include <iostream>
+ using namespace std;
+ 
+-#include "CommandVersion.h"
+-
+ /*****************************************************************************/
+ 
+ CommandVersion::CommandVersion():
+diff -r 9e65f782e8a1 tool/CommandXml.cpp
+--- a/tool/CommandXml.cpp	Tue Feb 13 17:16:01 2018 +0100
++++ b/tool/CommandXml.cpp	Tue May 15 10:08:44 2018 -0600
+@@ -27,14 +27,14 @@
+  *
+  ****************************************************************************/
+ 
++#include "CommandXml.h"
++#include "MasterDevice.h"
++
+ #include <iostream>
+ #include <iomanip>
+ #include <string.h>
+ using namespace std;
+ 
+-#include "CommandXml.h"
+-#include "MasterDevice.h"
+-
+ /*****************************************************************************/
+ 
+ CommandXml::CommandXml():
+diff -r 9e65f782e8a1 tool/DataTypeHandler.cpp
+--- a/tool/DataTypeHandler.cpp	Tue Feb 13 17:16:01 2018 +0100
++++ b/tool/DataTypeHandler.cpp	Tue May 15 10:08:44 2018 -0600
+@@ -27,6 +27,9 @@
+  *
+  ****************************************************************************/
+ 
++#include "DataTypeHandler.h"
++#include "ecrt.h"
++
+ #define DEBUG 0
+ 
+ #if DEBUG
+@@ -37,10 +40,6 @@
+ #include <sstream>
+ using namespace std;
+ 
+-#include "DataTypeHandler.h"
+-
+-#include "ecrt.h"
+-
+ /*****************************************************************************/
+ 
+ DataTypeHandler::DataTypeHandler()
+diff -r 9e65f782e8a1 tool/DataTypeHandler.h
+--- a/tool/DataTypeHandler.h	Tue Feb 13 17:16:01 2018 +0100
++++ b/tool/DataTypeHandler.h	Tue May 15 10:08:44 2018 -0600
+@@ -68,7 +68,7 @@
+ 
+         static void outputData(std::ostream &, const DataType *,
+                 void *, size_t);
+-        static void printRawData(ostream &, const uint8_t *, size_t);
++        static void printRawData(std::ostream &, const uint8_t *, size_t);
+ 
+     private:
+         static const DataType dataTypes[];
+diff -r 9e65f782e8a1 tool/MasterDevice.cpp
+--- a/tool/MasterDevice.cpp	Tue Feb 13 17:16:01 2018 +0100
++++ b/tool/MasterDevice.cpp	Tue May 15 10:08:44 2018 -0600
+@@ -27,6 +27,8 @@
+  *
+  ****************************************************************************/
+ 
++#include "MasterDevice.h"
++
+ #include <sys/stat.h>
+ #include <fcntl.h>
+ #include <errno.h>
+@@ -38,8 +40,6 @@
+ #include <iomanip>
+ using namespace std;
+ 
+-#include "MasterDevice.h"
+-
+ /****************************************************************************/
+ 
+ MasterDevice::MasterDevice(unsigned int index):
+diff -r 9e65f782e8a1 tool/MasterDevice.h
+--- a/tool/MasterDevice.h	Tue Feb 13 17:16:01 2018 +0100
++++ b/tool/MasterDevice.h	Tue May 15 10:08:44 2018 -0600
+@@ -30,13 +30,13 @@
+ #ifndef __MASTER_DEVICE_H__
+ #define __MASTER_DEVICE_H__
+ 
++#include "ecrt.h"
++#include "ioctl.h"
++
+ #include <stdexcept>
+ #include <sstream>
+ using namespace std;
+ 
+-#include "ecrt.h"
+-#include "ioctl.h"
+-
+ /****************************************************************************/
+ 
+ class MasterDeviceException:
+diff -r 9e65f782e8a1 tool/NumberListParser.cpp
+--- a/tool/NumberListParser.cpp	Tue Feb 13 17:16:01 2018 +0100
++++ b/tool/NumberListParser.cpp	Tue May 15 10:08:44 2018 -0600
+@@ -27,13 +27,13 @@
+  *
+  ****************************************************************************/
+ 
++#include "NumberListParser.h"
++
+ #include <cstring>
+ #include <sstream>
+ #include <stdexcept>
+ using namespace std;
+ 
+-#include "NumberListParser.h"
+-
+ /*****************************************************************************/
+ 
+ NumberListParser::NumberListParser():
+diff -r 9e65f782e8a1 tool/SoeCommand.cpp
+--- a/tool/SoeCommand.cpp	Tue Feb 13 17:16:01 2018 +0100
++++ b/tool/SoeCommand.cpp	Tue May 15 10:08:44 2018 -0600
+@@ -27,11 +27,11 @@
+  *
+  ****************************************************************************/
+ 
++#include "SoeCommand.h"
++
+ #include <iomanip>
+ using namespace std;
+ 
+-#include "SoeCommand.h"
+-
+ extern const ec_code_msg_t soe_error_codes[];
+ 
+ /*****************************************************************************/
+diff -r 9e65f782e8a1 tool/main.cpp
+--- a/tool/main.cpp	Tue Feb 13 17:16:01 2018 +0100
++++ b/tool/main.cpp	Tue May 15 10:08:44 2018 -0600
+@@ -27,14 +27,6 @@
+  *
+  ****************************************************************************/
+ 
+-#include <getopt.h>
+-#include <libgen.h> // basename()
+-#include <stdlib.h>
+-
+-#include <iostream>
+-#include <iomanip>
+-using namespace std;
+-
+ #include "CommandAlias.h"
+ #include "CommandConfig.h"
+ #include "CommandCrc.h"
+@@ -67,6 +59,14 @@
+ 
+ #include "MasterDevice.h"
+ 
++#include <getopt.h>
++#include <libgen.h> // basename()
++#include <stdlib.h>
++
++#include <iostream>
++#include <iomanip>
++using namespace std;
++
+ /*****************************************************************************/
+ 
+ typedef list<Command *> CommandList;
+diff -r 9e65f782e8a1 tty/module.c
+--- a/tty/module.c	Tue Feb 13 17:16:01 2018 +0100
++++ b/tty/module.c	Tue May 15 10:08:44 2018 -0600
+@@ -33,6 +33,9 @@
+ 
+ /*****************************************************************************/
+ 
++#include "../master/globals.h"
++#include "../include/ectty.h"
++
+ #include <linux/module.h>
+ #include <linux/err.h>
+ #include <linux/tty.h>
+@@ -45,9 +48,6 @@
+ #include <linux/uaccess.h>
+ #include <linux/slab.h>
+ 
+-#include "../master/globals.h"
+-#include "../include/ectty.h"
+-
+ /*****************************************************************************/
+ 
+ #define PFX "ec_tty: "
